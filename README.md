@@ -1,123 +1,69 @@
-# dio-live-dynamodb
-Repositório para o live coding do dia 30/09/2021 sobre o Amazon DynamoDB
+# **Desafio de Projeto DynamoDB**
 
-### Serviço utilizado
-  - Amazon DynamoDB
-  - Amazon CLI para execução em linha de comando
+### Repositório para Desafio da DIO
+Aluno: Lucas Dionísio
 
-### Comandos para execução do experimento:
+*****
 
+## **Tipos de bancos de dados**
 
-- Criar uma tabela
+- **SQL** - Banco de dados relacional, usa apenas SQL para fazer as queries. Usa índices, chaves primárias, colunas e diversos outros recursos relacionais para organizar as informações.
 
-```
-aws dynamodb create-table \
-    --table-name Music \
-    --attribute-definitions \
-        AttributeName=Artist,AttributeType=S \
-        AttributeName=SongTitle,AttributeType=S \
-    --key-schema \
-        AttributeName=Artist,KeyType=HASH \
-        AttributeName=SongTitle,KeyType=RANGE \
-    --provisioned-throughput \
-        ReadCapacityUnits=10,WriteCapacityUnits=5
-```
+- **NOSQL** - Banco de dados não relacional, não se limita ao SQL para realizar as queries. Trabalha com chave-valor, atributos, sort key, partition key e atributos para organizar e realizar a localização das informações.
 
-- Inserir um item
+****
 
-```
-aws dynamodb put-item \
-    --table-name Music \
-    --item file://itemmusic.json \
-```
+## **DynamoDB**
+Banco de dados não relacional, gerenciado e fornecido pela AWS (recursos são automaticamente providos pelo sistema da Amazon, garantindo escalabilidade)
 
-- Inserir múltiplos itens
+Aplicação espcializada em atender grande volume de dados com baixa latência, podendo processar até 10 trilhões de solicitações por dia, suportando picos de até 20 milhões de solicitações por segundo, garantindo disponibilidade de 99,9%. 
 
-```
-aws dynamodb batch-write-item \
-    --request-items file://batchmusic.json
-```
+### **Componentes do DynamoDB**
+  -**Tabelas -** organização semelhante à organização relacional, podendo conter coleções de dados em atributos ou itens.
 
-- Criar um index global secundário baeado no título do álbum
+- **Item-** é uma entidade no armazenamento, semelhante a um objeto, contendo atributos(pelo menos 1 para ser identificado).
+  
+- **Atributo-** menor divisão da organização, sendo fundamental para a organização dos itens nas tabelas.
+  
+- **Chave primária (primary key)-** elemento capaz de identificar o item na tabela, sendo uma identificação exclusiva para cada elemento. Pode ser partition key, sort key ou combinação destas.
+  
+- **Partition key-** chave primária simples, normalmente resulta em um hash para identificação, que costuma oferecer informação do armazenamento físico.
 
-```
-aws dynamodb update-table \
-    --table-name Music \
-    --attribute-definitions AttributeName=AlbumTitle,AttributeType=S \
-    --global-secondary-index-updates \
-        "[{\"Create\":{\"IndexName\": \"AlbumTitle-index\",\"KeySchema\":[{\"AttributeName\":\"AlbumTitle\",\"KeyType\":\"HASH\"}], \
-        \"ProvisionedThroughput\": {\"ReadCapacityUnits\": 10, \"WriteCapacityUnits\": 5      },\"Projection\":{\"ProjectionType\":\"ALL\"}}}]"
-```
+- **Partition key + sort key-** Combinação que permite a repetição de uma ou outra, porém o conjunto deve resultar em uma chave primária única capaz de tornar o elemento exclusivo.
 
-- Criar um index global secundário baseado no nome do artista e no título do álbum
+## Componentes 
+- **índices secundários-** permite a consulta em relação à chave primária e permite consulta por chave alternativa. O DynamoDB é compativel com índice secundário local e índice secundário global. Pode usar atributos para organização, não apenas chaves. 
+  
+- **índice secundário global-** Contém chave de partição e de classificação que podem divergir das da tabela.
 
-```
-aws dynamodb update-table \
-    --table-name Music \
-    --attribute-definitions\
-        AttributeName=Artist,AttributeType=S \
-        AttributeName=AlbumTitle,AttributeType=S \
-    --global-secondary-index-updates \
-        "[{\"Create\":{\"IndexName\": \"ArtistAlbumTitle-index\",\"KeySchema\":[{\"AttributeName\":\"Artist\",\"KeyType\":\"HASH\"}, {\"AttributeName\":\"AlbumTitle\",\"KeyType\":\"RANGE\"}], \
-        \"ProvisionedThroughput\": {\"ReadCapacityUnits\": 10, \"WriteCapacityUnits\": 5      },\"Projection\":{\"ProjectionType\":\"ALL\"}}}]"
-```
+- **índice secundário local-** Apresenta a mesma chave de partição da tabela, porém a de classificação é diferente.
 
-- Criar um index global secundário baseado no título da música e no ano
+## Tipos de dados
+- **Escalares-** representa o valor exato (número, booleano, string, nulo);
+- **Documentos-** representa uma estrutura complexa com atributos aninhados (JSON);
+- **Conjunto-** conjunto de valores escalares.
+  
+## Modos de leitura e gravação
+*Define a forma de cobrança e gerenciamento de capacidade*
 
-```
-aws dynamodb update-table \
-    --table-name Music \
-    --attribute-definitions\
-        AttributeName=SongTitle,AttributeType=S \
-        AttributeName=SongYear,AttributeType=S \
-    --global-secondary-index-updates \
-        "[{\"Create\":{\"IndexName\": \"SongTitleYear-index\",\"KeySchema\":[{\"AttributeName\":\"SongTitle\",\"KeyType\":\"HASH\"}, {\"AttributeName\":\"SongYear\",\"KeyType\":\"RANGE\"}], \
-        \"ProvisionedThroughput\": {\"ReadCapacityUnits\": 10, \"WriteCapacityUnits\": 5      },\"Projection\":{\"ProjectionType\":\"ALL\"}}}]"
-```
+- **Sob demanda-** opção flexível, variando o limite de solicitações conforme a necessidade, sem a necessidade de planejar dimensionar a capacidade.
+  
+- **Provisionado-** opção com especificação de leitura e gravação conforme a necessidade da aplicação. Permite manter um limite solicitações e estabilizar abaixo deste para ter previsibilidade de custos. 
 
-- Pesquisar item por artista
+## Fora da caixa
+*Pensamento do DynamoDB é fora da caixa*
+- Não normalizado
+- Não existe uma entidade por tabela
+- Sem joins para pesquisa de dados
+- Tabelas podem receber atributos de forma dinâmica
 
-```
-aws dynamodb query \
-    --table-name Music \
-    --key-condition-expression "Artist = :artist" \
-    --expression-attribute-values  '{":artist":{"S":"Iron Maiden"}}'
-```
-- Pesquisar item por artista e título da música
+## Boas práticas
+- **Access patterns:** padrões de acesso definem como os elementos serão buscados na tabela, sendo responsáveis pela modelagem do BD;
+  
+- **Regras de negócio bem definidas:** o Dynamo não é flexível a mudanças na modelagem após implementado, logo as regras têm que ser bem definidas e claras; 
+  
+- **Dimensionamento:** saber as dimensões e antecipar qual o pico de carga de consulta facilita a determinação de particionamento de dados para melhor uso de E/S (otimizar a capacidade de leitura e escrita).
+  
+- **Manter o mínimo de índices possível:** criar pensando nos atributos mais consultados, e não criar para os pouco consultados e pequenos.
 
-```
-aws dynamodb query \
-    --table-name Music \
-    --key-condition-expression "Artist = :artist and SongTitle = :title" \
-    --expression-attribute-values file://keyconditions.json
-```
-
-- Pesquisa pelo index secundário baseado no título do álbum
-
-```
-aws dynamodb query \
-    --table-name Music \
-    --index-name AlbumTitle-index \
-    --key-condition-expression "AlbumTitle = :name" \
-    --expression-attribute-values  '{":name":{"S":"Fear of the Dark"}}'
-```
-
-- Pesquisa pelo index secundário baseado no nome do artista e no título do álbum
-
-```
-aws dynamodb query \
-    --table-name Music \
-    --index-name ArtistAlbumTitle-index \
-    --key-condition-expression "Artist = :v_artist and AlbumTitle = :v_title" \
-    --expression-attribute-values  '{":v_artist":{"S":"Iron Maiden"},":v_title":{"S":"Fear of the Dark"} }'
-```
-
-- Pesquisa pelo index secundário baseado no título da música e no ano
-
-```
-aws dynamodb query \
-    --table-name Music \
-    --index-name SongTitleYear-index \
-    --key-condition-expression "SongTitle = :v_song and SongYear = :v_year" \
-    --expression-attribute-values  '{":v_song":{"S":"Wasting Love"},":v_year":{"S":"1992"} }'
-```
+- **Design eficiente:** 3 propriedades do padrão de acesso: tamanho dos dados, forma dos dados e velocidade dos dados. 
